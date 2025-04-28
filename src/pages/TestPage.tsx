@@ -1,46 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import useSpeechSynthesis from '../hooks/useSpeechSynthesis';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import useTransformerTTS from "../hooks/useTransformerTTS";
 
 function TestPage() {
   const navigate = useNavigate();
-  const { speak, isSpeaking } = useSpeechSynthesis();
+  const { speak, isSpeaking, isModelReady } = useTransformerTTS();
   const [testWords, setTestWords] = useState<string[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
-  const [currentWord, setCurrentWord] = useState('');
-  const [userInput, setUserInput] = useState('');
+  const [currentWord, setCurrentWord] = useState("");
+  const [userInput, setUserInput] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [showNextButton, setShowNextButton] = useState(false);
 
   useEffect(() => {
     // Load spellings from LocalStorage
-    const savedSpellings = localStorage.getItem('spellyquest_spellings');
+    const savedSpellings = localStorage.getItem("spellyquest_spellings");
     if (savedSpellings) {
       const words = JSON.parse(savedSpellings);
       setTestWords(words);
       if (words.length > 0 && currentWordIndex < words.length) {
-         const word = words[currentWordIndex];
-         setCurrentWord(word);
-         setUserInput('');
-         setFeedback(null);
-         setShowNextButton(false);
-         // Automatically speak the word when the component loads or word changes
-         speak(word);
+        const word = words[currentWordIndex];
+        setCurrentWord(word);
+        setUserInput("");
+        setFeedback(null);
+        setShowNextButton(false);
+        // Removed auto-speak functionality here
       } else if (currentWordIndex >= words.length && words.length > 0) {
         // All words tested, navigate to victory page
-        navigate('/victory', { state: { score, total: words.length } });
+        navigate("/victory", { state: { score, total: words.length } });
       } else if (words.length === 0) {
-         console.warn("No spellings found in LocalStorage. Navigating back to input.");
-         navigate('/input');
+        console.warn(
+          "No spellings found in LocalStorage. Navigating back to input."
+        );
+        navigate("/input");
       }
     } else {
       // Handle case where no spellings are saved (e.g., direct navigation)
-      console.warn("No spellings found in LocalStorage. Navigating back to input.");
-      navigate('/input');
+      console.warn(
+        "No spellings found in LocalStorage. Navigating back to input."
+      );
+      navigate("/input");
     }
-  }, [currentWordIndex, navigate, speak]); // Added speak to dependencies
+  }, [currentWordIndex, navigate, score]); // Removed speak and isModelReady from dependencies
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInput(e.target.value);
@@ -52,7 +55,7 @@ function TestPage() {
 
   const handleCheckAnswer = () => {
     if (userInput.toLowerCase().trim() === currentWord.toLowerCase()) {
-      setFeedback('Correct!');
+      setFeedback("Correct!");
       setScore(score + 1);
     } else {
       setFeedback(`Incorrect. The word was "${currentWord}".`);
@@ -65,16 +68,19 @@ function TestPage() {
   };
 
   const handleSpeakWord = () => {
-    if (currentWord) {
+    if (currentWord && isModelReady) {
       speak(currentWord);
     }
   };
 
   if (testWords.length === 0 && currentWordIndex === 0) {
-     // Render a loading or redirecting state if words are not loaded yet and it's the first word
-     return <div className="flex items-center justify-center min-h-screen bg-red-400 text-white">Loading spellings...</div>;
-   }
-
+    // Render a loading or redirecting state if words are not loaded yet and it's the first word
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-red-400 text-white">
+        Loading spellings...
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -98,13 +104,21 @@ function TestPage() {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.6 }}
       >
-        <h2 className="text-2xl font-semibold mb-4">Word {currentWordIndex + 1} of {testWords.length}</h2>
+        <h2 className="text-2xl font-semibold mb-4">
+          Word {currentWordIndex + 1} of {testWords.length}
+        </h2>
         <button
-          className={`bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out ${isSpeaking ? 'opacity-70 cursor-not-allowed' : ''}`}
+          className={`bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out ${
+            isSpeaking || !isModelReady ? "opacity-70 cursor-not-allowed" : ""
+          }`}
           onClick={handleSpeakWord}
-          disabled={isSpeaking}
+          disabled={isSpeaking || !isModelReady}
         >
-          {isSpeaking ? 'Speaking...' : 'Listen to the word'}
+          {isSpeaking
+            ? "Speaking..."
+            : isModelReady
+            ? "Listen to the word"
+            : "Loading..."}
         </button>
       </motion.div>
 
@@ -122,7 +136,11 @@ function TestPage() {
 
       {feedback && (
         <motion.p
-          className={`text-xl font-bold mb-4 ${feedback.startsWith('Correct') ? 'text-green-300' : 'text-yellow-300'}`}
+          className={`text-xl font-bold mb-4 ${
+            feedback.startsWith("Correct")
+              ? "text-green-300"
+              : "text-yellow-300"
+          }`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
@@ -144,19 +162,21 @@ function TestPage() {
       )}
 
       {showNextButton && (
-         <motion.button
-           className="bg-green-500 hover:bg-green-600 text-white text-xl font-bold py-3 px-6 rounded-full shadow-lg transform transition duration-300 ease-in-out active:scale-95"
-           whileHover={{ scale: 1.05 }}
-           whileTap={{ scale: 0.95 }}
-           onClick={handleNextWord}
-         >
-           {currentWordIndex < testWords.length - 1 ? 'Next Word' : 'Finish Test!'}
-         </motion.button>
-       )}
+        <motion.button
+          className="bg-green-500 hover:bg-green-600 text-white text-xl font-bold py-3 px-6 rounded-full shadow-lg transform transition duration-300 ease-in-out active:scale-95"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleNextWord}
+        >
+          {currentWordIndex < testWords.length - 1
+            ? "Next Word"
+            : "Finish Test!"}
+        </motion.button>
+      )}
 
-       <div className="mt-8 text-2xl font-bold">
-         Score: {score} / {testWords.length}
-       </div>
+      <div className="mt-8 text-2xl font-bold">
+        Score: {score} / {testWords.length}
+      </div>
     </motion.div>
   );
 }

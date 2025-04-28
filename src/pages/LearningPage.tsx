@@ -1,36 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import useSpeechSynthesis from '../hooks/useSpeechSynthesis';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import useTransformerTTS from "../hooks/useTransformerTTS";
 
 function LearningPage() {
   const navigate = useNavigate();
-  const { speak, isSpeaking } = useSpeechSynthesis();
+  const { speak, isSpeaking, isModelReady } = useTransformerTTS();
   const [spellingWords, setSpellingWords] = useState<string[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const currentWord = spellingWords[currentWordIndex];
 
   useEffect(() => {
     // Load spellings from LocalStorage
-    const savedSpellings = localStorage.getItem('spellyquest_spellings');
+    const savedSpellings = localStorage.getItem("spellyquest_spellings");
     if (savedSpellings) {
       setSpellingWords(JSON.parse(savedSpellings));
     } else {
       // Handle case where no spellings are saved (e.g., direct navigation)
-      console.warn("No spellings found in LocalStorage. Navigating back to input.");
-      navigate('/input');
+      console.warn(
+        "No spellings found in LocalStorage. Navigating back to input."
+      );
+      navigate("/input");
     }
   }, [navigate]); // Add navigate to dependencies
 
-  useEffect(() => {
-    // Speak the word when it changes
-    if (currentWord) {
-      speak(currentWord);
-    }
-  }, [currentWord, speak]); // Add speak to dependencies
+  // Removed the auto-speak useEffect - now word only speaks when button is clicked
 
   const handleSpeakWord = () => {
-    if (currentWord) {
+    if (currentWord && isModelReady) {
       speak(currentWord);
     }
   };
@@ -40,17 +37,21 @@ function LearningPage() {
       setCurrentWordIndex(currentWordIndex + 1);
     } else {
       // Finished learning all words, navigate to game page
-      navigate('/game');
+      navigate("/game");
     }
   };
 
   const handleFinishLearning = () => {
-     navigate('/game');
-  }
+    navigate("/game");
+  };
 
   if (spellingWords.length === 0) {
     // Render a loading or redirecting state if words are not loaded yet
-    return <div className="flex items-center justify-center min-h-screen bg-blue-400 text-white">Loading spellings...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-blue-400 text-white">
+        Loading spellings...
+      </div>
+    );
   }
 
   return (
@@ -85,42 +86,46 @@ function LearningPage() {
           {currentWord}
         </motion.h2>
         <button
-          className={`bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out ${isSpeaking ? 'opacity-70 cursor-not-allowed' : ''}`}
+          className={`bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out ${
+            isSpeaking || !isModelReady ? "opacity-70 cursor-not-allowed" : ""
+          }`}
           onClick={handleSpeakWord}
-          disabled={isSpeaking}
+          disabled={isSpeaking || !isModelReady}
         >
-          {isSpeaking ? 'Speaking...' : 'Listen'}
+          {isSpeaking ? "Speaking..." : isModelReady ? "Listen" : "Loading..."}
         </button>
       </motion.div>
 
       {/* Placeholder for Interactive Activities */}
       <motion.div
-         className="w-full max-w-md bg-white text-gray-800 rounded-lg shadow-xl p-6 mb-8"
-         initial={{ x: -100, opacity: 0 }}
-         animate={{ x: 0, opacity: 1 }}
-         transition={{ duration: 0.5, delay: 0.8 }}
+        className="w-full max-w-md bg-white text-gray-800 rounded-lg shadow-xl p-6 mb-8"
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.8 }}
       >
         <h3 className="text-2xl font-semibold mb-4">Activities</h3>
-        <p className="text-gray-600 mb-4">Interactive activities (tracing, missing letters) will go here in a later phase.</p>
+        <p className="text-gray-600 mb-4">
+          Interactive activities (tracing, missing letters) will go here in a
+          later phase.
+        </p>
         {/* TODO: Implement Tracing and Missing Letters activities */}
         <div className="flex justify-around">
-            <motion.div
-                className="bg-yellow-200 p-4 rounded-lg text-center w-24"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                Trace
-            </motion.div>
-             <motion.div
-                className="bg-pink-200 p-4 rounded-lg text-center w-24"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                Fill In
-            </motion.div>
+          <motion.div
+            className="bg-yellow-200 p-4 rounded-lg text-center w-24"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            Trace
+          </motion.div>
+          <motion.div
+            className="bg-pink-200 p-4 rounded-lg text-center w-24"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            Fill In
+          </motion.div>
         </div>
       </motion.div>
-
 
       <motion.button
         className="bg-yellow-500 hover:bg-yellow-600 text-gray-800 text-xl font-bold py-3 px-6 rounded-full shadow-lg transform transition duration-300 ease-in-out active:scale-95 mb-4"
@@ -128,19 +133,21 @@ function LearningPage() {
         whileTap={{ scale: 0.95 }}
         onClick={handleNextWord}
       >
-        {currentWordIndex < spellingWords.length - 1 ? 'Next Word' : 'Finish Learning'}
+        {currentWordIndex < spellingWords.length - 1
+          ? "Next Word"
+          : "Finish Learning"}
       </motion.button>
 
-       {currentWordIndex === spellingWords.length - 1 && (
-         <motion.button
-           className="bg-green-500 hover:bg-green-600 text-white text-xl font-bold py-3 px-6 rounded-full shadow-lg transform transition duration-300 ease-in-out active:scale-95"
-           whileHover={{ scale: 1.05 }}
-           whileTap={{ scale: 0.95 }}
-           onClick={handleFinishLearning}
-         >
-           Go to Game!
-         </motion.button>
-       )}
+      {currentWordIndex === spellingWords.length - 1 && (
+        <motion.button
+          className="bg-green-500 hover:bg-green-600 text-white text-xl font-bold py-3 px-6 rounded-full shadow-lg transform transition duration-300 ease-in-out active:scale-95"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleFinishLearning}
+        >
+          Go to Game!
+        </motion.button>
+      )}
     </motion.div>
   );
 }

@@ -1,76 +1,134 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from "react";
+import { pipeline, env } from "@xenova/transformers";
 
-const useSpeechSynthesis = () => {
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+// Set to use local storage for models
+env.cacheDir = "./model-cache";
+
+// We'll use a lightweight TTS model
+const TTS_MODEL = "Xenova/speecht5_tts";
+
+const useTransformerTTS = () => {
+  const [isModelLoading, setIsModelLoading] = useState(true);
+  const [isModelReady, setIsModelReady] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
+  const ttsRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize the TTS model
   useEffect(() => {
-    const populateVoices = () => {
-      const availableVoices = window.speechSynthesis.getVoices();
-      setVoices(availableVoices);
+    const loadModel = async () => {
+      try {
+        setIsModelLoading(true);
+        setError(null);
+
+        // Create progress callback
+        const onProgress = (progress: {
+          status: string;
+          progress?: number;
+        }) => {
+          if (progress.progress) {
+            setLoadingProgress(Math.round(progress.progress * 100));
+          }
+        };
+
+        // Load the TTS pipeline with progress tracking
+        ttsRef.current = await pipeline("text-to-speech", TTS_MODEL, {
+          progress_callback: onProgress,
+        });
+
+        // Initialize audio element
+        if (!audioRef.current) {
+          audioRef.current = new Audio();
+          audioRef.current.onended = () => setIsSpeaking(false);
+        }
+
+        setIsModelReady(true);
+        setIsModelLoading(false);
+      } catch (err) {
+        console.error("Error loading TTS model:", err);
+        setError(
+          `Failed to load TTS model: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+        setIsModelLoading(false);
+      }
     };
 
-    // Populate voices initially
-    populateVoices();
+    loadModel();
 
-    // Update voices if they change (e.g., after loading)
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = populateVoices;
-    }
-
+    // Cleanup
     return () => {
-      // Clean up the event listener if component unmounts
-      if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = null;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
       }
     };
   }, []);
 
-  const speak = (text: string, voiceName?: string) => {
-    if (!window.speechSynthesis) {
-      console.error("Speech Synthesis API not supported in this browser.");
+  const speak = async (text: string) => {
+    if (!isModelReady || !ttsRef.current || isSpeaking) {
       return;
     }
 
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
+    try {
+      setIsSpeaking(true);
 
-    const utterance = new SpeechSynthesisUtterance(text);
+      // Generate speech
+      const result = await ttsRef.current(text, {
+        voice_preset: "female", // You can adjust this or make it configurable
+      });
 
-    if (voiceName) {
-      const selectedVoice = voices.find(voice => voice.name === voiceName);
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      } else {
-        console.warn(`Voice "${voiceName}" not found. Using default voice.`);
+      // Convert array buffer to blob
+      const blob = new Blob([result.audio], { type: "audio/wav" });
+      const url = URL.createObjectURL(blob);
+
+      // Play audio
+      if (audioRef.current) {
+        audioRef.current.src = url;
+        await audioRef.current.play();
       }
-    }
 
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = (event) => {
-      console.error('SpeechSynthesisUtterance error:', event);
+      // Clean up the URL when done
+      audioRef.current?.addEventListener(
+        "ended",
+        () => {
+          URL.revokeObjectURL(url);
+          setIsSpeaking(false);
+        },
+        { once: true }
+      );
+    } catch (err) {
+      console.error("TTS generation error:", err);
       setIsSpeaking(false);
-    };
-
-    window.speechSynthesis.speak(utterance);
+      setError(
+        `Failed to generate speech: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+    }
   };
 
   const cancel = () => {
-    if (window.speechSynthesis && isSpeaking) {
-      window.speechSynthesis.cancel();
+    if (audioRef.current && isSpeaking) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
       setIsSpeaking(false);
     }
   };
 
   return {
-    voices,
-    isSpeaking,
     speak,
     cancel,
+    isSpeaking,
+    isModelLoading,
+    isModelReady,
+    loadingProgress,
+    error,
   };
 };
 
-export default useSpeechSynthesis;
+export default useTransformerTTS;
