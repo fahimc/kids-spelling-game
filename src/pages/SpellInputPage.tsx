@@ -1,10 +1,89 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 function SpellInputPage() {
   const navigate = useNavigate();
-  const [spellings, setSpellings] = useState<string[]>(Array(10).fill('')); // Start with 10 empty inputs
+  const [spellings, setSpellings] = useState<string[]>(Array(10).fill("")); // Start with 10 empty inputs
+
+  // List of age-appropriate words for 6-7 year olds
+  const ageAppropriateWords = [
+    "cat",
+    "dog",
+    "run",
+    "jump",
+    "play",
+    "home",
+    "school",
+    "book",
+    "read",
+    "write",
+    "friend",
+    "happy",
+    "sad",
+    "big",
+    "small",
+    "help",
+    "like",
+    "look",
+    "good",
+    "bad",
+    "mom",
+    "dad",
+    "sun",
+    "moon",
+    "star",
+    "tree",
+    "flower",
+    "rain",
+    "snow",
+    "day",
+    "night",
+    "food",
+    "water",
+    "milk",
+    "apple",
+    "ball",
+    "game",
+    "time",
+    "house",
+    "fish",
+    "bird",
+    "duck",
+    "frog",
+    "cake",
+    "toy",
+    "bear",
+    "lion",
+    "tiger",
+    "monkey",
+    "pig",
+    "zebra",
+    "cow",
+    "ship",
+    "boat",
+    "car",
+    "bus",
+    "train",
+    "bike",
+    "walk",
+    "stop",
+  ];
+
+  const generateRandomWords = () => {
+    // Shuffle the array and take a random number between 10-15 words
+    const shuffled = [...ageAppropriateWords].sort(() => 0.5 - Math.random());
+    const wordCount = Math.floor(Math.random() * 6) + 10; // Random number between 10-15
+    const selectedWords = shuffled.slice(0, wordCount);
+
+    // Fill the remaining slots with empty strings if we have fewer than current spellings length
+    const filledArray = [...selectedWords];
+    while (filledArray.length < spellings.length) {
+      filledArray.push("");
+    }
+
+    setSpellings(filledArray);
+  };
 
   const handleInputChange = (index: number, value: string) => {
     const newSpellings = [...spellings];
@@ -13,13 +92,15 @@ function SpellInputPage() {
   };
 
   const handleAddInput = () => {
-    if (spellings.length < 20) { // Limit to 20 spellings
-      setSpellings([...spellings, '']);
+    if (spellings.length < 20) {
+      // Limit to 20 spellings
+      setSpellings([...spellings, ""]);
     }
   };
 
   const handleRemoveInput = (index: number) => {
-    if (spellings.length > 10) { // Ensure at least 10 inputs remain
+    if (spellings.length > 10) {
+      // Ensure at least 10 inputs remain
       const newSpellings = spellings.filter((_, i) => i !== index);
       setSpellings(newSpellings);
     }
@@ -28,18 +109,21 @@ function SpellInputPage() {
   const handleBeginJourney = () => {
     // Filter out empty strings and trim whitespace
     const validSpellings = spellings
-      .map(s => s.trim())
-      .filter(s => s !== '');
+      .map((s) => s.trim())
+      .filter((s) => s !== "");
 
     if (validSpellings.length === 0) {
-      alert('Please enter at least one spelling word.');
+      alert("Please enter at least one spelling word.");
       return;
     }
 
     // Save spellings to LocalStorage
-    localStorage.setItem('spellyquest_spellings', JSON.stringify(validSpellings));
+    localStorage.setItem(
+      "spellyquest_spellings",
+      JSON.stringify(validSpellings)
+    );
 
-    navigate('/learn'); // Navigate to the Learning page
+    navigate("/learn"); // Navigate to the Learning page
   };
 
   return (
@@ -57,6 +141,22 @@ function SpellInputPage() {
       >
         Enter Your Spellings
       </motion.h1>
+
+      <motion.div
+        className="w-full max-w-md mb-6 flex justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.5 }}
+      >
+        <motion.button
+          className="bg-purple-500 hover:bg-purple-600 text-white text-lg font-bold py-3 px-6 rounded-full shadow-lg mb-6 transform transition duration-300 ease-in-out active:scale-95"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={generateRandomWords}
+        >
+          Generate Random Words
+        </motion.button>
+      </motion.div>
 
       <div className="w-full max-w-md mb-6">
         {spellings.map((spelling, index) => (
@@ -80,8 +180,17 @@ function SpellInputPage() {
                 onClick={() => handleRemoveInput(index)}
                 aria-label={`Remove spelling word ${index + 1}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </button>
             )}
@@ -99,7 +208,6 @@ function SpellInputPage() {
           Add More Words ({spellings.length}/20)
         </motion.button>
       )}
-
 
       <motion.button
         className="bg-yellow-500 hover:bg-yellow-600 text-gray-800 text-2xl font-bold py-4 px-8 rounded-full shadow-lg transform transition duration-300 ease-in-out active:scale-95"
