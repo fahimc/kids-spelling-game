@@ -71,3 +71,32 @@
 - Next Task: Build Victory Screen (Phase 8).
 
 ---
+
+## Phase 8: Build Victory Screen
+- Starting Phase 8: Implementing the Victory Screen UI.
+- Implemented the Victory Screen (`src/pages/VictoryPage.tsx`) to display the final score.
+- Added `react-confetti-explosion` for a celebration animation based on the score.
+- Added a "Play Again!" button to navigate back to the Spell Input page.
+- Added basic styling with Tailwind CSS and animations with Framer Motion.
+- Fixed import error by installing `react-confetti-explosion`.
+- Completed Phase 8.
+- Next Task: Add Persistence (LocalStorage) (Phase 9).
+
+---
+
+## Phase 9: Add Persistence (LocalStorage)
+- Starting Phase 9: Implementing persistence using LocalStorage.
+- Modified `SpellInputPage.tsx` to save the entered spelling words to LocalStorage under the key `spellyquest_spellings`.
+- Modified `LearningPage.tsx`, `GamePage.tsx`, and `TestPage.tsx` to load the spelling words from LocalStorage on component mount. Added checks for empty storage and navigation back to the input page if no words are found.
+- Completed Phase 9.
+- Next Task: Polish: Add animations & UI polish (Phase 10).
+
+---
+
+## Phase 10: Polish: Add animations & UI polish
+- Starting Phase 10: Adding UI polish and animations.
+- Added a simple fade-in/slide-up animation to the displayed word in `LearningPage.tsx` when the word changes.
+- Added placeholder UI elements with hover/tap animations in the "Activities" section of `LearningPage.tsx`.
+- Next Task: Continue polishing other screens or implement specific interactive activities.
+
+---

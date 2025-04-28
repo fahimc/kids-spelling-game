@@ -3,12 +3,10 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import useSpeechSynthesis from '../hooks/useSpeechSynthesis';
 
-// Hardcoded words for now - will come from input page later
-const TEST_WORDS = ['apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grape', 'honeydew'];
-
 function TestPage() {
   const navigate = useNavigate();
   const { speak, isSpeaking } = useSpeechSynthesis();
+  const [testWords, setTestWords] = useState<string[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [currentWord, setCurrentWord] = useState('');
   const [userInput, setUserInput] = useState('');
@@ -17,17 +15,30 @@ function TestPage() {
   const [showNextButton, setShowNextButton] = useState(false);
 
   useEffect(() => {
-    if (TEST_WORDS.length > 0 && currentWordIndex < TEST_WORDS.length) {
-      const word = TEST_WORDS[currentWordIndex];
-      setCurrentWord(word);
-      setUserInput('');
-      setFeedback(null);
-      setShowNextButton(false);
-      // Automatically speak the word when the component loads or word changes
-      speak(word);
-    } else if (currentWordIndex >= TEST_WORDS.length) {
-      // All words tested, navigate to victory page
-      navigate('/victory', { state: { score, total: TEST_WORDS.length } });
+    // Load spellings from LocalStorage
+    const savedSpellings = localStorage.getItem('spellyquest_spellings');
+    if (savedSpellings) {
+      const words = JSON.parse(savedSpellings);
+      setTestWords(words);
+      if (words.length > 0 && currentWordIndex < words.length) {
+         const word = words[currentWordIndex];
+         setCurrentWord(word);
+         setUserInput('');
+         setFeedback(null);
+         setShowNextButton(false);
+         // Automatically speak the word when the component loads or word changes
+         speak(word);
+      } else if (currentWordIndex >= words.length && words.length > 0) {
+        // All words tested, navigate to victory page
+        navigate('/victory', { state: { score, total: words.length } });
+      } else if (words.length === 0) {
+         console.warn("No spellings found in LocalStorage. Navigating back to input.");
+         navigate('/input');
+      }
+    } else {
+      // Handle case where no spellings are saved (e.g., direct navigation)
+      console.warn("No spellings found in LocalStorage. Navigating back to input.");
+      navigate('/input');
     }
   }, [currentWordIndex, navigate, speak]); // Added speak to dependencies
 
@@ -59,6 +70,12 @@ function TestPage() {
     }
   };
 
+  if (testWords.length === 0 && currentWordIndex === 0) {
+     // Render a loading or redirecting state if words are not loaded yet and it's the first word
+     return <div className="flex items-center justify-center min-h-screen bg-red-400 text-white">Loading spellings...</div>;
+   }
+
+
   return (
     <motion.div
       className="flex flex-col items-center min-h-screen bg-gradient-to-br from-red-400 to-orange-500 text-white p-4 overflow-y-auto"
@@ -81,7 +98,7 @@ function TestPage() {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.6 }}
       >
-        <h2 className="text-2xl font-semibold mb-4">Word {currentWordIndex + 1} of {TEST_WORDS.length}</h2>
+        <h2 className="text-2xl font-semibold mb-4">Word {currentWordIndex + 1} of {testWords.length}</h2>
         <button
           className={`bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out ${isSpeaking ? 'opacity-70 cursor-not-allowed' : ''}`}
           onClick={handleSpeakWord}
@@ -133,12 +150,12 @@ function TestPage() {
            whileTap={{ scale: 0.95 }}
            onClick={handleNextWord}
          >
-           {currentWordIndex < TEST_WORDS.length - 1 ? 'Next Word' : 'Finish Test!'}
+           {currentWordIndex < testWords.length - 1 ? 'Next Word' : 'Finish Test!'}
          </motion.button>
        )}
 
        <div className="mt-8 text-2xl font-bold">
-         Score: {score} / {TEST_WORDS.length}
+         Score: {score} / {testWords.length}
        </div>
     </motion.div>
   );

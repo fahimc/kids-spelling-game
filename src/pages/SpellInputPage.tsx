@@ -36,8 +36,8 @@ function SpellInputPage() {
       return;
     }
 
-    // TODO: Save spellings to context/localStorage in a later phase
-    console.log('Spellings entered:', validSpellings);
+    // Save spellings to LocalStorage
+    localStorage.setItem('spellyquest_spellings', JSON.stringify(validSpellings));
 
     navigate('/learn'); // Navigate to the Learning page
   };

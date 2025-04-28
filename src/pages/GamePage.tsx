@@ -4,12 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import useSpeechSynthesis from '../hooks/useSpeechSynthesis';
 import shuffleArray from '../utils/shuffleArray';
 
-// Hardcoded words for now - will come from input page later
-const GAME_WORDS = ['apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grape', 'honeydew'];
-
 function GamePage() {
   const navigate = useNavigate();
   const { speak, isSpeaking } = useSpeechSynthesis();
+  const [gameWords, setGameWords] = useState<string[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [currentWord, setCurrentWord] = useState('');
   const [scrambledLetters, setScrambledLetters] = useState<string[]>([]);
@@ -17,14 +15,35 @@ function GamePage() {
   const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
-    if (GAME_WORDS.length > 0) {
-      const word = GAME_WORDS[currentWordIndex];
-      setCurrentWord(word);
-      setScrambledLetters(shuffleArray(word.split('')));
+    // Load spellings from LocalStorage
+    const savedSpellings = localStorage.getItem('spellyquest_spellings');
+    if (savedSpellings) {
+      const words = JSON.parse(savedSpellings);
+      setGameWords(words);
+      if (words.length > 0) {
+         const word = words[currentWordIndex];
+         setCurrentWord(word);
+         setScrambledLetters(shuffleArray(word.split('')));
+      } else {
+         console.warn("No spellings found in LocalStorage. Navigating back to input.");
+         navigate('/input');
+      }
+    } else {
+      // Handle case where no spellings are saved (e.g., direct navigation)
+      console.warn("No spellings found in LocalStorage. Navigating back to input.");
+      navigate('/input');
+    }
+  }, [navigate, currentWordIndex]); // Add navigate and currentWordIndex to dependencies
+
+  useEffect(() => {
+    // Update scrambled letters when the current word changes
+    if (currentWord) {
+      setScrambledLetters(shuffleArray(currentWord.split('')));
       setUserInput('');
       setFeedback(null);
     }
-  }, [currentWordIndex]);
+  }, [currentWord]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInput(e.target.value);
@@ -43,7 +62,7 @@ function GamePage() {
   };
 
   const handleNextWord = () => {
-    if (currentWordIndex < GAME_WORDS.length - 1) {
+    if (currentWordIndex < gameWords.length - 1) {
       setCurrentWordIndex(currentWordIndex + 1);
     } else {
       // Finished all game words, navigate to test page
@@ -56,6 +75,11 @@ function GamePage() {
       speak(currentWord);
     }
   };
+
+  if (gameWords.length === 0) {
+    // Render a loading or redirecting state if words are not loaded yet
+    return <div className="flex items-center justify-center min-h-screen bg-purple-400 text-white">Loading spellings...</div>;
+  }
 
   return (
     <motion.div
@@ -128,7 +152,7 @@ function GamePage() {
            whileTap={{ scale: 0.95 }}
            onClick={handleNextWord}
          >
-           {currentWordIndex < GAME_WORDS.length - 1 ? 'Next Word' : 'Go to Test!'}
+           {currentWordIndex < gameWords.length - 1 ? 'Next Word' : 'Go to Test!'}
          </motion.button>
        )}
     </motion.div>
